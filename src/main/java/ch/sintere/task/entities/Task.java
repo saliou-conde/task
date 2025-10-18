@@ -14,7 +14,7 @@ import java.time.LocalDateTime;
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
-public class Tasks {
+public class Task {
 
     @Id
     @GeneratedValue

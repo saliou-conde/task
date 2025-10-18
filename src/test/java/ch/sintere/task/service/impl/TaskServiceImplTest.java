@@ -3,7 +3,7 @@ package ch.sintere.task.service.impl;
 import ch.sintere.task.dto.TaskDto;
 import ch.sintere.task.entities.Priority;
 import ch.sintere.task.entities.Status;
-import ch.sintere.task.entities.Tasks;
+import ch.sintere.task.entities.Task;
 import ch.sintere.task.exception.TaskNotFoundException;
 import ch.sintere.task.repository.TaskRepository;
 import org.junit.jupiter.api.BeforeEach;
@@ -32,7 +32,7 @@ class TaskServiceImplTest {
     void testAddTask() {
         TaskDto dto = new TaskDto("Test Title", "OPEN", "HIGH", null, null);
 
-        Tasks savedTask = Tasks.builder()
+        Task savedTask = Task.builder()
                 .id(1)
                 .title("Test Title")
                 .status(Status.OPEN)
@@ -47,14 +47,14 @@ class TaskServiceImplTest {
         assertThat(result.title()).isEqualTo(dto.title());
         assertThat(result.status()).isEqualTo(dto.status());
         assertThat(result.priority()).isEqualTo(dto.priority());
-        verify(taskRepository).save(any(Tasks.class));
+        verify(taskRepository).save(any(Task.class));
     }
 
     @Test
     void testUpdateTask() {
         Integer taskId = 1;
         LocalDateTime oldCreateDate = LocalDateTime.now().minusDays(1);
-        Tasks existingTask = Tasks.builder()
+        Task existingTask = Task.builder()
                 .id(taskId)
                 .title("Old Title")
                 .status(Status.IN_PROGRESS)
@@ -77,7 +77,7 @@ class TaskServiceImplTest {
 
     @Test
     void testFindTaskById() {
-        Tasks task = Tasks.builder()
+        Task task = Task.builder()
                 .id(1)
                 .title("Title")
                 .status(Status.OPEN)
@@ -101,7 +101,7 @@ class TaskServiceImplTest {
 
     @Test
     void testDeleteTask() {
-        Tasks task = Tasks.builder()
+        Task task = Task.builder()
                 .id(1)
                 .title("Title")
                 .status(Status.OPEN)
@@ -118,8 +118,8 @@ class TaskServiceImplTest {
 
     @Test
     void testFindByStatus() {
-        List<Tasks> tasks = List.of(
-                Tasks.builder().title("Task1").status(Status.OPEN).priority(Priority.LOW).createAt(LocalDateTime.now()).build()
+        List<Task> tasks = List.of(
+                Task.builder().title("Task1").status(Status.OPEN).priority(Priority.LOW).createAt(LocalDateTime.now()).build()
         );
 
         when(taskRepository.findByStatus(Status.OPEN)).thenReturn(tasks);
@@ -132,8 +132,8 @@ class TaskServiceImplTest {
 
     @Test
     void testFindByPriority() {
-        List<Tasks> tasks = List.of(
-                Tasks.builder().title("Task2").status(Status.OPEN).priority(Priority.HIGH).createAt(LocalDateTime.now()).build()
+        List<Task> tasks = List.of(
+                Task.builder().title("Task2").status(Status.OPEN).priority(Priority.HIGH).createAt(LocalDateTime.now()).build()
         );
 
         when(taskRepository.findByPriority(Priority.HIGH)).thenReturn(tasks);

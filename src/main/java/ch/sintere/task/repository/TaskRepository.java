@@ -2,18 +2,18 @@ package ch.sintere.task.repository;
 
 import ch.sintere.task.entities.Priority;
 import ch.sintere.task.entities.Status;
-import ch.sintere.task.entities.Tasks;
+import ch.sintere.task.entities.Task;
 import org.springframework.data.jpa.repository.JpaRepository;
 
 import java.util.List;
 import java.util.Optional;
 
-public interface TaskRepository extends JpaRepository<Tasks, Integer> {
+public interface TaskRepository extends JpaRepository<Task, Integer> {
 
-    List<Tasks> findByStatus(Status status);
+    List<Task> findByStatus(Status status);
 
-    List<Tasks> findByPriority(Priority priority);
+    List<Task> findByPriority(Priority priority);
 
-    Optional<Tasks> findByTitle(String title);
+    Optional<Task> findByTitle(String title);
 
 }

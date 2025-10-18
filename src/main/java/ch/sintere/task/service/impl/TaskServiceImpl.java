@@ -3,7 +3,7 @@ package ch.sintere.task.service.impl;
 import ch.sintere.task.dto.TaskDto;
 import ch.sintere.task.entities.Priority;
 import ch.sintere.task.entities.Status;
-import ch.sintere.task.entities.Tasks;
+import ch.sintere.task.entities.Task;
 import ch.sintere.task.exception.TaskAlreadyExistException;
 import ch.sintere.task.exception.TaskNotFoundException;
 import ch.sintere.task.repository.TaskRepository;
@@ -27,7 +27,7 @@ public class TaskServiceImpl implements TaskService {
     public TaskDto addTask(TaskDto taskDto) {
         log.info("addTask(TaskDto taskDto) start");
         findByTitle(taskDto.title());
-        Tasks tasks = Tasks.builder()
+        Task tasks = Task.builder()
                 .status(taskDto.status())
                 .priority(taskDto.priority())
                 .title(taskDto.title())
@@ -82,7 +82,7 @@ public class TaskServiceImpl implements TaskService {
                 .map(task -> new TaskDto(task.getTitle(), task.getStatus(), task.getPriority(), task.getCreateAt(), task.getUpdateAt())).toList();
     }
 
-    private Tasks findById(Integer id) {
+    private Task findById(Integer id) {
         return taskRepository.findById(id)
                 .orElseThrow(() -> {
                     log.warn("Task not found by the provided Id::{}", id);
@@ -90,7 +90,7 @@ public class TaskServiceImpl implements TaskService {
                 });
     }
 
-    private void mergeTask(TaskDto taskDto, Tasks task) {
+    private void mergeTask(TaskDto taskDto, Task task) {
         task.setTitle(taskDto.title());
         task.setStatus(taskDto.status());
         task.setPriority(taskDto.priority());

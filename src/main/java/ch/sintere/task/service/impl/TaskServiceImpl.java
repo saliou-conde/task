@@ -5,13 +5,17 @@ import ch.sintere.task.entities.Priority;
 import ch.sintere.task.entities.Status;
 import ch.sintere.task.entities.Task;
 import ch.sintere.task.exception.TaskAlreadyExistException;
+import ch.sintere.task.exception.TaskDueDateInvalidException;
 import ch.sintere.task.exception.TaskNotFoundException;
+import ch.sintere.task.mapper.TaskMapper;
 import ch.sintere.task.repository.TaskRepository;
 import ch.sintere.task.service.TaskService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDate;
 import java.util.List;
 
 import static java.lang.String.format;
@@ -22,6 +26,7 @@ import static java.lang.String.format;
 public class TaskServiceImpl implements TaskService {
 
     private final TaskRepository taskRepository;
+    private final TaskMapper taskMapper;
 
     @Override
     public TaskDto addTask(TaskDto taskDto) {
@@ -33,20 +38,42 @@ public class TaskServiceImpl implements TaskService {
                 .title(taskDto.title())
                 .build();
         var savedTask = taskRepository.save(tasks);
-        log.info("Task created at: {}", savedTask.getCreateAt());
+        log.info("Task created at: {}", savedTask.getCreatedAt());
         log.info("addTask(TaskDto taskDto) end");
-        return new TaskDto(savedTask.getTitle(), savedTask.getStatus(), savedTask.getPriority(), savedTask.getCreateAt(), savedTask.getUpdateAt());
+        return taskMapper.toDto(savedTask);
     }
 
     @Override
+    @Transactional
     public TaskDto updateTask(TaskDto taskDto, Integer id) {
         log.info("updateTask(TaskDto taskDto, Integer id) start");
-        var task = findById(id);
-        mergeTask(taskDto, task);
-        taskRepository.save(task);
-        log.info("Task updated at: {}", task.getUpdateAt());
+        var existing  = findById(id);
+        mergeTask(taskDto, existing );
+        var updatedTask = taskRepository.save(existing );
+        log.info("Task updated at: {}", updatedTask.getUpdatedAt());
         log.info("updateTask(TaskDto taskDto, Integer id) end");
-        return new TaskDto(task.getTitle(), task.getStatus(), task.getPriority(), task.getCreateAt(), task.getUpdateAt());
+        return taskMapper.toDto(updatedTask);
+    }
+
+    @Override
+    public TaskDto updateStatus(Integer id, TaskDto taskDto) {
+        log.info("updateStatus(Integer id, TaskDto taskDto) start...");
+        var existing = findById(id);
+        validateTaskDto(existing, taskDto);
+        existing.setStatus(taskDto.status());
+        var updatedTask = taskRepository.save(existing );
+        log.info("updatedAt: {}", updatedTask.getUpdatedAt());
+        log.info("updateStatus(Integer id, TaskDto taskDto) started");
+        return taskMapper.toDto(updatedTask);
+    }
+
+    @Override
+    public List<TaskDto> updatePriorityForAll(Priority oldPriority, Priority newPriority) {
+        taskRepository.updatePriorityForAll(oldPriority, newPriority);
+        return taskRepository.findByPriority(newPriority)
+                .stream()
+                .map(taskMapper::toDto)
+                .toList();
     }
 
     @Override
@@ -55,7 +82,7 @@ public class TaskServiceImpl implements TaskService {
         var task = findById(id);
         log.info("Task title is: {}", task.getTitle());
         log.info("findTaskById(Integer id) end");
-        return new TaskDto(task.getTitle(), task.getStatus(), task.getPriority(), task.getCreateAt(), task.getUpdateAt());
+        return taskMapper.toDto(task);
     }
 
     @Override
@@ -70,16 +97,18 @@ public class TaskServiceImpl implements TaskService {
 
     @Override
     public List<TaskDto> findByStatus(Status status) {
-        return taskRepository.findByStatus(status)
+        var taskDtoList = taskRepository.findByStatus(status)
                 .stream()
-                .map(task -> new TaskDto(task.getTitle(), task.getStatus(), task.getPriority(), task.getCreateAt(), task.getUpdateAt())).toList();
+                .map(taskMapper::toDto).toList();
+        log.info("Number of status is:{}", taskDtoList.size());
+        return taskDtoList;
     }
 
     @Override
     public List<TaskDto> findByPriority(Priority priority) {
         return taskRepository.findByPriority(priority)
                 .stream()
-                .map(task -> new TaskDto(task.getTitle(), task.getStatus(), task.getPriority(), task.getCreateAt(), task.getUpdateAt())).toList();
+                .map(taskMapper::toDto).toList();
     }
 
     private Task findById(Integer id) {
@@ -94,6 +123,7 @@ public class TaskServiceImpl implements TaskService {
         task.setTitle(taskDto.title());
         task.setStatus(taskDto.status());
         task.setPriority(taskDto.priority());
+        validateDueDate(taskDto.dueDate(), task);
     }
 
     private void findByTitle(String title) {
@@ -102,4 +132,29 @@ public class TaskServiceImpl implements TaskService {
             throw  new TaskAlreadyExistException(format("Task already exists by the provided title:: %s", title));
         }
     }
+
+    private void validateTaskDto(Task task, TaskDto taskDto) {
+        if(!task.getTitle().equals(taskDto.title())) {
+            throw new IllegalArgumentException(format("Task title %s is not equal to TaskDto title %s", task.getTitle(), taskDto.title()));
+        }
+        if(!task.getPriority().equals(taskDto.priority())) {
+            throw new IllegalArgumentException(format("Task priority %s is not equal to TaskDto priority %s", task.getPriority(), taskDto.priority()));
+        }
+    }
+
+    private void validateDueDate(LocalDate dueDate, Task task) {
+        if(dueDate != null && !checkDueDate(dueDate)) {
+            throw new TaskDueDateInvalidException(format("Due date shall be in present or in future:: dueDate is %s", dueDate));
+        }
+        if(dueDate !=null) {
+            task.setDueDate(dueDate);
+        }
+    }
+
+    private boolean checkDueDate(LocalDate dueDate) {
+        var now = LocalDate.now();
+        return dueDate.isEqual(now) || now.isBefore(dueDate);
+    }
+
+
 }

@@ -1,6 +1,7 @@
 package ch.sintere.task.handler;
 
 import ch.sintere.task.exception.TaskAlreadyExistException;
+import ch.sintere.task.exception.TaskDueDateInvalidException;
 import ch.sintere.task.exception.TaskNotFoundException;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
@@ -20,6 +21,7 @@ import static org.springframework.http.HttpStatus.*;
 public class GlobalHandling {
 
     private static final String TASK_NOT_FOUND  = "Task not found in the database";
+    private static final String TASK_STATUS_CAN_NOT_BE_UPDATED  = "Task status can not be updated";
     private static final String TASK_ALREADY_EXISTS = "Task already exists in the database";
 
     @ExceptionHandler(TaskNotFoundException.class)
@@ -28,10 +30,16 @@ public class GlobalHandling {
         return createResponseEntityWithProblemDetail( ex.getMessage(), NOT_FOUND, TASK_NOT_FOUND);
     }
 
+   @ExceptionHandler(TaskDueDateInvalidException.class)
+    public ResponseEntity<ProblemDetail> handleTaskDueDateException(TaskDueDateInvalidException ex) {
+        log.warn("Status can not be updated: {}", ex.getMessage());
+        return createResponseEntityWithProblemDetail( ex.getMessage(), BAD_REQUEST, TASK_STATUS_CAN_NOT_BE_UPDATED);
+    }
+
     @ExceptionHandler(TaskAlreadyExistException.class)
     public ResponseEntity<ProblemDetail> handleTaskAlreadyExistException(TaskAlreadyExistException ex) {
         log.warn("Task already exists: {}", ex.getMessage());
-        return createResponseEntityWithProblemDetail( ex.getMessage(), BAD_REQUEST, TASK_ALREADY_EXISTS);
+        return createResponseEntityWithProblemDetail( ex.getMessage(), CONFLICT, TASK_ALREADY_EXISTS);
     }
 
     @ExceptionHandler(MethodArgumentTypeMismatchException.class)

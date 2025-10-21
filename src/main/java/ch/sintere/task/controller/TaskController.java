@@ -1,5 +1,6 @@
 package ch.sintere.task.controller;
 
+import ch.sintere.task.dto.PriorityUpdateRequest;
 import ch.sintere.task.dto.TaskDto;
 import ch.sintere.task.entities.Priority;
 import ch.sintere.task.entities.Status;
@@ -105,8 +106,8 @@ public class TaskController {
     }
 
     @Operation(
-            description = "Update status by Id",
-            summary = "Update status by Id.",
+            description = "Update only status by Id",
+            summary = "Update only status by Id.",
             responses = {
                     @ApiResponse(
                             description = "Success",
@@ -138,8 +139,8 @@ public class TaskController {
             }
     )
     @PutMapping("/priority")
-    public ResponseEntity<List<TaskDto>> updatePriorityForAll(@RequestParam Priority oldPriority, @RequestParam Priority newPriority) {
-        return ResponseEntity.ok(taskService.updatePriorityForAll(oldPriority, newPriority));
+    public ResponseEntity<List<TaskDto>> updatePriorityForAll(@RequestBody PriorityUpdateRequest updateRequest) {
+        return ResponseEntity.ok(taskService.updatePriorityForAll(updateRequest.oldPriority(), updateRequest.newPriority()));
     }
 
     @Operation(

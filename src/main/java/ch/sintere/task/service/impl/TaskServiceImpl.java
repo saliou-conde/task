@@ -1,6 +1,7 @@
 package ch.sintere.task.service.impl;
 
 import ch.sintere.task.dto.TaskDto;
+import ch.sintere.task.dto.TaskStatus;
 import ch.sintere.task.entities.Priority;
 import ch.sintere.task.entities.Status;
 import ch.sintere.task.entities.Task;
@@ -17,7 +18,10 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
 import java.util.List;
+import java.util.Objects;
+import java.util.Set;
 
+import static ch.sintere.task.entities.Status.DONE;
 import static java.lang.String.format;
 
 @Service
@@ -56,15 +60,14 @@ public class TaskServiceImpl implements TaskService {
     }
 
     @Override
+    @Transactional
     public TaskDto updateStatus(Integer id, TaskDto taskDto) {
-        log.info("updateStatus(Integer id, TaskDto taskDto) start...");
+        log.info("updateStatus({}, {}) start...", id, taskDto.status());
         var existing = findById(id);
         validateTaskDto(existing, taskDto);
         existing.setStatus(taskDto.status());
-        var updatedTask = taskRepository.save(existing );
-        log.info("updatedAt: {}", updatedTask.getUpdatedAt());
-        log.info("updateStatus(Integer id, TaskDto taskDto) started");
-        return taskMapper.toDto(updatedTask);
+        log.info("updateStatus finished. newStatus={}", existing.getStatus());
+        return taskMapper.toDto(existing);
     }
 
     @Override
@@ -80,9 +83,10 @@ public class TaskServiceImpl implements TaskService {
     public TaskDto findTaskById(Integer id) {
         log.info("findTaskById(Integer id) start");
         var task = findById(id);
-        log.info("Task title is: {}", task.getTitle());
+        TaskDto taskDto = taskMapper.toDto(task);
+        log.info("Task title is: {}", taskDto.title());
         log.info("findTaskById(Integer id) end");
-        return taskMapper.toDto(task);
+        return taskDto;
     }
 
     @Override
@@ -140,19 +144,50 @@ public class TaskServiceImpl implements TaskService {
         if(!task.getPriority().equals(taskDto.priority())) {
             throw new IllegalArgumentException(format("Task priority %s is not equal to TaskDto priority %s", task.getPriority(), taskDto.priority()));
         }
+        if(!task.getCreatedAt().equals(taskDto.createdAt())) {
+            throw new IllegalArgumentException(format("Task createdAt %s is not equal to TaskDto createdAt %s", task.getCreatedAt(), taskDto.createdAt()));
+        }
     }
+
+    private void validateOnlyStatusChanged(Task existing, TaskDto dto) {
+        var allowedToChange = Set.of("status");
+
+        var taskFields = Task.class.getDeclaredFields();
+        for (var field : taskFields) {
+            field.setAccessible(true);
+            if (allowedToChange.contains(field.getName())) continue;
+
+            try {
+                var entityValue = field.get(existing);
+                var dtoValue = field.get(dto);
+                if (!Objects.equals(entityValue, dtoValue)) {
+                    throw new IllegalArgumentException(
+                            "Only 'status' field is allowed to change (violated: " + field.getName() + ")");
+                }
+            } catch (IllegalAccessException e) {
+                throw new RuntimeException(e);
+            }
+        }
+    }
+
+    private void validateStatusTransition(TaskStatus oldStatus, TaskStatus  newStatus) {
+        if (oldStatus.status() == DONE && newStatus.status() != DONE) {
+            throw new IllegalStateException("Cannot change status of completed task.");
+        }
+    }
+
 
     private void validateDueDate(LocalDate dueDate, Task task) {
-        if(dueDate != null && !checkDueDate(dueDate)) {
+        if (dueDate == null) return;
+        if(!isDueDateNotInPast(dueDate)) {
             throw new TaskDueDateInvalidException(format("Due date shall be in present or in future:: dueDate is %s", dueDate));
         }
-        if(dueDate !=null) {
-            task.setDueDate(dueDate);
-        }
+        task.setDueDate(dueDate);
     }
 
-    private boolean checkDueDate(LocalDate dueDate) {
+    private boolean isDueDateNotInPast(LocalDate dueDate) {
         var now = LocalDate.now();
+        log.info("To is: {}", dueDate);
         return dueDate.isEqual(now) || now.isBefore(dueDate);
     }
 

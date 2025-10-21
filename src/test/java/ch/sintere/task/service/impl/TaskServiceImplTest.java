@@ -44,7 +44,7 @@ class TaskServiceImplTest {
         @Test
         void addTask_shouldInsertTask_whenValidDataGiven() {
             //Given
-            var expectedTaskDto = new TaskDto("Test Title", Status.OPEN, Priority.HIGH, null, null, LocalDate.now());
+            var expectedTaskDto = new TaskDto("Test Title", Status.OPEN, Priority.HIGH, null, null, LocalDate.now(), "SYSTEM");
 
             var savedTask = Task.builder()
                     .id(1)
@@ -242,7 +242,14 @@ class TaskServiceImplTest {
                     Task.builder().priority(MEDIUM).title("Title 5").status(DONE).createdAt(LocalDateTime.now()).build()
                     );
 
-            TaskDto expectedTaskDto = new TaskDto("Title 1", DONE, newPriority, LocalDateTime.now(), null, LocalDate.now());
+            TaskDto expectedTaskDto = new TaskDto(
+                    "Title 1",
+                    DONE,
+                    newPriority,
+                    LocalDateTime.now(),
+                    null,
+                    LocalDate.now(),
+                    "SYSTEM");
 
 
             when(taskRepository.updatePriorityForAll(oldPriority, newPriority)).thenReturn(1);
@@ -326,8 +333,8 @@ class TaskServiceImplTest {
             var id = 1;
             var expectedTitle = "Task1";
             var createdAt = LocalDateTime.now();
-            var tasks = List.of(
-                    Task.builder().title(expectedTitle).status(OPEN).priority(LOW).createdAt(createdAt).build()
+            List<Task> tasks = List.of(
+                    Task.builder().title(expectedTitle).status(OPEN).priority(LOW).createdAt(createdAt).createdBy("SYSTEM").build()
             );
             var expectedTaskDto = createTaskDto(expectedTitle, OPEN, LOW, createdAt, null);
 
@@ -356,7 +363,7 @@ class TaskServiceImplTest {
             //Given
             var id = 1;
             var createdAt = LocalDateTime.now();
-            var tasks = List.of(
+            List<Task> tasks = List.of(
                     Task.builder().title("Task2").status(OPEN).priority(HIGH).createdAt(createdAt).build()
             );
             var expectedTaskDto = createTaskDto("Task2", OPEN, HIGH, createdAt, null);
@@ -379,7 +386,7 @@ class TaskServiceImplTest {
     }
 
     private TaskDto createTaskDto(String title, Status status, Priority priority, LocalDateTime createdAt, LocalDate dueDate) {
-        return new TaskDto(title, status, priority, createdAt, null, dueDate);
+        return new TaskDto(title, status, priority, createdAt, null, dueDate, "SYSTEM");
     }
 
     private List<TaskDto> mapToTaskDto(List<Task> taskList) {
@@ -390,7 +397,8 @@ class TaskServiceImplTest {
                         task.getPriority(),
                         task.getCreatedAt(),
                         task.getUpdatedAt(),
-                        task.getDueDate()
+                        task.getDueDate(),
+                        task.getCreatedBy()
                         )).toList();
     }
 }

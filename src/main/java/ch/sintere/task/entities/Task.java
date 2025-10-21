@@ -3,22 +3,20 @@ package ch.sintere.task.entities;
 import ch.sintere.task.entities.converter.PriorityConverter;
 import ch.sintere.task.entities.converter.StatusConverter;
 import jakarta.persistence.*;
-import lombok.AllArgsConstructor;
-import lombok.Builder;
-import lombok.Data;
+import lombok.Getter;
 import lombok.NoArgsConstructor;
-import org.hibernate.annotations.CreationTimestamp;
-import org.hibernate.annotations.UpdateTimestamp;
+import lombok.Setter;
+import lombok.experimental.SuperBuilder;
 
 import java.time.LocalDate;
-import java.time.LocalDateTime;
 
 @Entity
-@Data
+@Getter
+@Setter
+@SuperBuilder
+@Table(name = "tasks")
 @NoArgsConstructor
-@AllArgsConstructor
-@Builder
-public class Task {
+public class Task extends BaseEntity {
 
     @Id
     @GeneratedValue
@@ -34,14 +32,6 @@ public class Task {
     @Convert(converter = PriorityConverter.class)
     @Column(nullable = false)
     private Priority priority;
-
-    @Column(nullable = false, updatable = false)
-    @CreationTimestamp
-    private LocalDateTime createdAt;
-
-    @Column(insertable = false)
-    @UpdateTimestamp
-    private LocalDateTime updatedAt;
 
     private LocalDate dueDate;
 }

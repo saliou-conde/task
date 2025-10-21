@@ -15,6 +15,7 @@ public record TaskDto(
         @NotNull(message = "Task shall have a priority") Priority priority,
         LocalDateTime createdAt,
         LocalDateTime updatedAt,
-        @FutureOrPresent LocalDate dueDate
+        @FutureOrPresent LocalDate dueDate,
+        @NotBlank String createdBy
 ) {
 }

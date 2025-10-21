@@ -18,7 +18,7 @@ import static org.springframework.http.HttpStatus.*;
 
 @RestControllerAdvice
 @Slf4j
-public class GlobalHandling {
+public class GlobalExceptionHandler {
 
     private static final String TASK_NOT_FOUND  = "Task not found in the database";
     private static final String TASK_STATUS_CAN_NOT_BE_UPDATED  = "Task status can not be updated";
@@ -49,6 +49,14 @@ public class GlobalHandling {
         var parameter = ex.getParameter().getParameterName();
         log.warn("Bad Request with name or value: {} {}", name, value);
         return createResponseEntityWithProblemDetail( parameter, BAD_REQUEST, format("Bad Request: %s = %s", name, value));
+    }
+
+    @ExceptionHandler(Exception.class)
+    public ResponseEntity<ProblemDetail> handleGenericException(Exception ex) {
+        log.error("Unexpected error: ", ex);
+        return createResponseEntityWithProblemDetail(
+                ex.getMessage(), INTERNAL_SERVER_ERROR, "Unexpected Error"
+        );
     }
 
     private ResponseEntity<ProblemDetail> createResponseEntityWithProblemDetail(String message, HttpStatus status, String description) {

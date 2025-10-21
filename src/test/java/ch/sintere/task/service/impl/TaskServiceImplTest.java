@@ -3,17 +3,25 @@ package ch.sintere.task.service.impl;
 import ch.sintere.task.dto.TaskDto;
 import ch.sintere.task.entities.Priority;
 import ch.sintere.task.entities.Status;
-import ch.sintere.task.entities.Tasks;
+import ch.sintere.task.entities.Task;
+import ch.sintere.task.exception.TaskDueDateInvalidException;
 import ch.sintere.task.exception.TaskNotFoundException;
+import ch.sintere.task.mapper.TaskMapperImpl;
 import ch.sintere.task.repository.TaskRepository;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
 
+import static ch.sintere.task.entities.Priority.*;
+import static ch.sintere.task.entities.Status.*;
+import static java.lang.String.format;
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.*;
 
@@ -21,126 +29,376 @@ class TaskServiceImplTest {
 
     private TaskRepository taskRepository;
     private TaskServiceImpl taskService;
+    private TaskMapperImpl taskMapper;
 
     @BeforeEach
     void setUp() {
         taskRepository = mock(TaskRepository.class);
-        taskService = new TaskServiceImpl(taskRepository);
+        taskMapper = mock(TaskMapperImpl.class);
+        taskService = new TaskServiceImpl(taskRepository, taskMapper);
     }
 
-    @Test
-    void testAddTask() {
-        TaskDto dto = new TaskDto("Test Title", "OPEN", "HIGH", null, null);
+    @Nested
+    class AddTask {
 
-        Tasks savedTask = Tasks.builder()
-                .id(1)
-                .title("Test Title")
-                .status(Status.OPEN)
-                .priority(Priority.HIGH)
-                .createAt(LocalDateTime.now())
-                .build();
+        @Test
+        void addTask_shouldInsertTask_whenValidDataGiven() {
+            //Given
+            var expectedTaskDto = new TaskDto("Test Title", Status.OPEN, Priority.HIGH, null, null, LocalDate.now(), "SYSTEM");
 
-        when(taskRepository.save(any())).thenReturn(savedTask);
+            var savedTask = Task.builder()
+                    .id(1)
+                    .title("Test Title")
+                    .status(Status.OPEN)
+                    .priority(Priority.HIGH)
+                    .createdAt(LocalDateTime.now())
+                    .build();
 
-        TaskDto result = taskService.addTask(dto);
+            when(taskRepository.save(any(Task.class))).thenReturn(savedTask);
+            when(taskMapper.toDto(any(Task.class))).thenReturn(expectedTaskDto);
 
-        assertThat(result.title()).isEqualTo(dto.title());
-        assertThat(result.status()).isEqualTo(dto.status());
-        assertThat(result.priority()).isEqualTo(dto.priority());
-        verify(taskRepository).save(any(Tasks.class));
+            //When
+            var result = taskService.addTask(expectedTaskDto);
+
+            //
+            assertAll(
+                    () -> assertThat(result.title()).isEqualTo(expectedTaskDto.title()),
+                    () -> assertThat(result.status()).isEqualTo(expectedTaskDto.status()),
+                () -> assertThat(result.priority()).isEqualTo(expectedTaskDto.priority())
+            );
+
+            //Verify
+            verify(taskRepository).save(any(Task.class));
+        }
     }
 
-    @Test
-    void testUpdateTask() {
-        Integer taskId = 1;
-        LocalDateTime oldCreateDate = LocalDateTime.now().minusDays(1);
-        Tasks existingTask = Tasks.builder()
-                .id(taskId)
-                .title("Old Title")
-                .status(Status.IN_PROGRESS)
-                .priority(Priority.LOW)
-                .createAt(oldCreateDate)
-                .build();
+    @Nested
+    class UpdateTask {
 
-        TaskDto updateDto = new TaskDto("New Title", "DONE", "MEDIUM", null, null);
+        @Test
+        void updateTask_shouldModifyTask_whenValidDataGiven() {
+            //Given
+            var taskId = 1;
+            var oldCreateDate = LocalDateTime.now().minusDays(1);
+            var existingTask = Task.builder()
+                    .id(taskId)
+                    .title("Old Title")
+                    .status(DONE)
+                    .priority(MEDIUM)
+                    .createdAt(oldCreateDate)
+                    .build();
 
-        when(taskRepository.findById(taskId)).thenReturn(Optional.of(existingTask));
+            var expectedTaskDto = createTaskDto("New Title", DONE, MEDIUM, oldCreateDate, null);
 
-        TaskDto result = taskService.updateTask(updateDto, taskId);
+            when(taskRepository.findById(taskId))
+                    .thenReturn(Optional.of(existingTask));
+            when(taskRepository.save(any(Task.class)))
+                    .thenReturn(existingTask);
+            when(taskMapper.toDto(any(Task.class))).thenReturn(expectedTaskDto);
 
-        assertThat(result.title()).isEqualTo("New Title");
-        assertThat(result.status()).isEqualTo("DONE");
-        assertThat(result.priority()).isEqualTo("MEDIUM");
-        assertThat(result.createdAt()).isEqualTo(oldCreateDate);
-        assertNotNull(result.updatedAt());
+            //When
+            var result = taskService.updateTask(expectedTaskDto, taskId);
+
+            //Then
+            assertAll(
+                    () -> assertThat(result.title()).isEqualTo("New Title"),
+                    () -> assertThat(result.status()).isEqualTo(DONE),
+                    () -> assertThat(result.priority()).isEqualTo(MEDIUM),
+                    () -> assertThat(result.createdAt()).isEqualTo(oldCreateDate)
+            );
+        }
+
+        @Test
+        void updateTask_shouldNotModifyTask_whenDueDateIsBeforeNow() {
+            //Given
+            var taskId = 1;
+            var oldCreateDate = LocalDateTime.now();
+
+            var dueDate = LocalDate.now().minusDays(1);
+            var existingTask = Task.builder()
+                    .id(taskId)
+                    .title("Old Title")
+                    .status(DONE)
+                    .priority(MEDIUM)
+                    .createdAt(oldCreateDate)
+                    .dueDate(dueDate)
+                    .build();
+
+            var expectedTaskDto = createTaskDto("New Title", DONE, MEDIUM, oldCreateDate, dueDate);
+
+            when(taskRepository.findById(taskId))
+                    .thenReturn(Optional.of(existingTask));
+            when(taskRepository.save(any(Task.class)))
+                    .thenReturn(existingTask);
+            when(taskMapper.toDto(any(Task.class))).thenReturn(expectedTaskDto);
+
+            // When & Then TaskDueDateInvalidException("Due date shall be in present or in future")
+
+            assertThatThrownBy(() -> taskService.updateTask(expectedTaskDto, taskId))
+                    .isInstanceOf(TaskDueDateInvalidException.class)
+                    .hasMessageContaining(format("Due date shall be in present or in future:: dueDate is %s", dueDate));
+        }
+
+        @Test
+        void updateStatus_shouldModifyOnlyStatus_whenValidDataGiven() {
+            //Given
+            var taskId = 1;
+            var title = "Title";
+            var createDate = LocalDateTime.now();
+            var existingTask = Task.builder()
+                    .id(taskId)
+                    .title(title)
+                    .status(DONE)
+                    .priority(MEDIUM)
+                    .createdAt(createDate)
+                    .build();
+
+            var taskDto = createTaskDto(title, IN_PROGRESS, MEDIUM, createDate, null);
+
+            when(taskRepository.findById(taskId))
+                    .thenReturn(Optional.of(existingTask));
+            when(taskRepository.save(any(Task.class)))
+                    .thenReturn(existingTask);
+            when(taskMapper.toDto(any(Task.class))).thenReturn(taskDto);
+
+            //When
+            var updatedTask = taskService.updateStatus(taskId, taskDto);
+
+            //Then
+            assertAll(
+                    () -> assertThat(updatedTask.title()).isEqualTo(taskDto.title()),
+                    () -> assertThat(updatedTask.status()).isEqualTo(taskDto.status())
+            );
+        }
+
+        @Test
+        void updateStatus_shouldNotModifyStatus_whenTitleAreNotEqual() {
+            //Given
+            var taskId = 1;
+            var oldTitle = "Old Title";
+            var newTitle = "New Title";
+            var createDate = LocalDateTime.now();
+            var existingTask = Task.builder()
+                    .id(taskId)
+                    .title(oldTitle)
+                    .status(DONE)
+                    .priority(MEDIUM)
+                    .createdAt(createDate)
+                    .build();
+
+            var taskDto = createTaskDto(newTitle, IN_PROGRESS, MEDIUM, createDate, null);
+
+            when(taskRepository.findById(taskId))
+                    .thenReturn(Optional.of(existingTask));
+            when(taskRepository.save(any(Task.class)))
+                    .thenReturn(existingTask);
+            when(taskMapper.toDto(any(Task.class))).thenReturn(taskDto);
+
+            // When & Then
+            assertThatThrownBy(() -> taskService.updateStatus(taskId, taskDto))
+                    .isInstanceOf(IllegalArgumentException.class)
+                    .hasMessageContaining(format("Task title %s is not equal to TaskDto title %s", existingTask.getTitle(), taskDto.title()));
+        }
+
+        @Test
+        void updateStatus_shouldNotModifyStatus_whenPriorityAreNotEqual() {
+            //Given
+            var taskId = 1;
+            var oldTitle = "Old Title";
+            var createDate = LocalDateTime.now();
+            var existingTask = Task.builder()
+                    .id(taskId)
+                    .title(oldTitle)
+                    .status(DONE)
+                    .priority(MEDIUM)
+                    .createdAt(createDate)
+                    .build();
+
+            var taskDto = createTaskDto(oldTitle, DONE, LOW, createDate, null);
+
+            when(taskRepository.findById(taskId))
+                    .thenReturn(Optional.of(existingTask));
+            when(taskRepository.save(any(Task.class)))
+                    .thenReturn(existingTask);
+            when(taskMapper.toDto(any(Task.class))).thenReturn(taskDto);
+
+            // When & Then
+            assertThatThrownBy(() -> taskService.updateStatus(taskId, taskDto))
+                    .isInstanceOf(IllegalArgumentException.class)
+                    .hasMessageContaining(format("Task priority %s is not equal to TaskDto priority %s", existingTask.getPriority(), taskDto.priority()));
+        }
+
+        @Test
+        void updatePriorityForAll_shouldUpdatePriorityForAll_whenListOfTaskIsNotEmpty() {
+            //Given
+            var oldPriority = HIGH;
+            var newPriority = LOW;
+            List<Task> taskList = List.of(
+                    Task.builder().priority(oldPriority).title("Title 1").status(DONE).createdAt(LocalDateTime.now()).build(),
+                    Task.builder().priority(oldPriority).title("Title 2").status(DONE).createdAt(LocalDateTime.now()).build(),
+                    Task.builder().priority(oldPriority).title("Title 3").status(DONE).createdAt(LocalDateTime.now()).build(),
+                    Task.builder().priority(oldPriority).title("Title 3").status(DONE).createdAt(LocalDateTime.now()).build(),
+                    Task.builder().priority(MEDIUM).title("Title 5").status(DONE).createdAt(LocalDateTime.now()).build(),
+                    Task.builder().priority(MEDIUM).title("Title 5").status(DONE).createdAt(LocalDateTime.now()).build()
+                    );
+
+            TaskDto expectedTaskDto = new TaskDto(
+                    "Title 1",
+                    DONE,
+                    newPriority,
+                    LocalDateTime.now(),
+                    null,
+                    LocalDate.now(),
+                    "SYSTEM");
+
+
+            when(taskRepository.updatePriorityForAll(oldPriority, newPriority)).thenReturn(1);
+            when(taskRepository.findByPriority(newPriority)).thenReturn(taskList);
+            when(taskMapper.toDto(any(Task.class))).thenReturn(expectedTaskDto);
+
+            //When
+            var priorityList = taskService.updatePriorityForAll(oldPriority, newPriority);
+
+            //Then
+            assertAll(
+                    () -> assertThat(priorityList).isNotNull()
+            );
+        }
     }
 
-    @Test
-    void testFindTaskById() {
-        Tasks task = Tasks.builder()
-                .id(1)
-                .title("Title")
-                .status(Status.OPEN)
-                .priority(Priority.HIGH)
-                .createAt(LocalDateTime.now())
-                .build();
 
-        when(taskRepository.findById(1)).thenReturn(Optional.of(task));
+    @Nested
+    class FindTaskById {
 
-        TaskDto dto = taskService.findTaskById(1);
+        @Test
+        void findTaskById_shouldFindTask_whenTaskIsPresent() {
+            //Given
+            var id = 1;
+            var expectedTitle = "Title";
+            Task task = Task.builder()
+                    .id(id)
+                    .title(expectedTitle)
+                    .status(OPEN)
+                    .priority(HIGH)
+                    .createdAt(LocalDateTime.now())
+                    .build();
+            var expectedTaskDto = createTaskDto(task.getTitle(), task.getStatus(), task.getPriority(), task.getCreatedAt(), null);
 
-        assertThat(dto.title()).isEqualTo("Title");
+            when(taskRepository.findById(id)).thenReturn(Optional.of(task));
+            when(taskMapper.toDto(any(Task.class))).thenReturn(expectedTaskDto);
+
+            //When
+            var dto = taskService.findTaskById(id);
+
+            //Then
+            assertThat(dto.title()).isEqualTo(expectedTitle);
+        }
+
+        @Test
+        void findTaskById_shouldNotFoundById_whenTaskIsAbsent() {
+            when(taskRepository.findById(1)).thenReturn(Optional.empty());
+            assertThrows(TaskNotFoundException.class, () -> taskService.findTaskById(1));
+        }
+
+        @Test
+        void testDeleteTask() {
+            //Given
+            var id = 1;
+            Task task = Task.builder()
+                    .id(id)
+                    .title("Title")
+                    .status(OPEN)
+                    .priority(LOW)
+                    .build();
+
+            when(taskRepository.findById(id)).thenReturn(Optional.of(task));
+
+            //When
+            Boolean result = taskService.deleteTask(id);
+
+            //Then
+            assertTrue(result);
+
+            //Verify
+            verify(taskRepository).delete(task);
+        }
     }
 
-    @Test
-    void testFindTaskById_NotFound() {
-        when(taskRepository.findById(1)).thenReturn(Optional.empty());
+    @Nested
+    class FindTaskByStatus {
 
-        assertThrows(TaskNotFoundException.class, () -> taskService.findTaskById(1));
+        @Test
+        void findTaskByStatus_shouldFindTaskByStatus_whenTaskIsPresent() {
+            //Given
+            var id = 1;
+            var expectedTitle = "Task1";
+            var createdAt = LocalDateTime.now();
+            List<Task> tasks = List.of(
+                    Task.builder().title(expectedTitle).status(OPEN).priority(LOW).createdAt(createdAt).createdBy("SYSTEM").build()
+            );
+            var expectedTaskDto = createTaskDto(expectedTitle, OPEN, LOW, createdAt, null);
+
+            when(taskRepository.findByStatus(OPEN)).thenReturn(tasks);
+            when(taskMapper.toDto(any(Task.class))).thenReturn(expectedTaskDto);
+
+            //When
+            var taskDtoList = taskService.findByStatus(OPEN);
+
+            //Then
+            assertAll(
+                    () -> assertThat(taskDtoList).hasSize(id),
+                    () -> {
+                        assertNotNull(taskDtoList);
+                        assertThat(taskDtoList.getFirst().title()).isEqualTo(expectedTaskDto.title());
+                    }
+            );
+        }
     }
 
-    @Test
-    void testDeleteTask() {
-        Tasks task = Tasks.builder()
-                .id(1)
-                .title("Title")
-                .status(Status.OPEN)
-                .priority(Priority.LOW)
-                .build();
+    @Nested
+    class FindTaskByPriority {
 
-        when(taskRepository.findById(1)).thenReturn(Optional.of(task));
+        @Test
+        void findByPriority_shouldFindTaskByPriority_whenTaskIsPresent() {
+            //Given
+            var id = 1;
+            var createdAt = LocalDateTime.now();
+            List<Task> tasks = List.of(
+                    Task.builder().title("Task2").status(OPEN).priority(HIGH).createdAt(createdAt).build()
+            );
+            var expectedTaskDto = createTaskDto("Task2", OPEN, HIGH, createdAt, null);
 
-        Boolean result = taskService.deleteTask(1);
+            when(taskRepository.findByPriority(HIGH)).thenReturn(tasks);
+            when(taskMapper.toDto(any(Task.class))).thenReturn(expectedTaskDto);
 
-        assertTrue(result);
-        verify(taskRepository).delete(task);
+            //When
+            var taskDtoList = taskService.findByPriority(HIGH);
+
+            //Then
+            assertAll(
+                    () -> assertThat(taskDtoList).hasSize(id),
+                    () -> {
+                        assertNotNull(taskDtoList);
+                        assertThat(taskDtoList.getFirst().title()).isEqualTo("Task2");
+                    }
+            );
+        }
     }
 
-    @Test
-    void testFindByStatus() {
-        List<Tasks> tasks = List.of(
-                Tasks.builder().title("Task1").status(Status.OPEN).priority(Priority.LOW).createAt(LocalDateTime.now()).build()
-        );
-
-        when(taskRepository.findByStatus(Status.OPEN)).thenReturn(tasks);
-
-        List<TaskDto> dtos = taskService.findByStatus(Status.OPEN);
-
-        assertThat(dtos).hasSize(1);
-        assertThat(dtos.getFirst().title()).isEqualTo("Task1");
+    private TaskDto createTaskDto(String title, Status status, Priority priority, LocalDateTime createdAt, LocalDate dueDate) {
+        return new TaskDto(title, status, priority, createdAt, null, dueDate, "SYSTEM");
     }
 
-    @Test
-    void testFindByPriority() {
-        List<Tasks> tasks = List.of(
-                Tasks.builder().title("Task2").status(Status.OPEN).priority(Priority.HIGH).createAt(LocalDateTime.now()).build()
-        );
-
-        when(taskRepository.findByPriority(Priority.HIGH)).thenReturn(tasks);
-
-        List<TaskDto> dtos = taskService.findByPriority(Priority.HIGH);
-
-        assertThat(dtos).hasSize(1);
-        assertThat(dtos.getFirst().title()).isEqualTo("Task2");
+    private List<TaskDto> mapToTaskDto(List<Task> taskList) {
+        return taskList.stream().map(task ->
+                new TaskDto(
+                        task.getTitle(),
+                        task.getStatus(),
+                        task.getPriority(),
+                        task.getCreatedAt(),
+                        task.getUpdatedAt(),
+                        task.getDueDate(),
+                        task.getCreatedBy()
+                        )).toList();
     }
 }

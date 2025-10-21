@@ -13,4 +13,6 @@ public interface TaskService {
     Boolean deleteTask(Integer id);
     List<TaskDto> findByStatus(Status status);
     List<TaskDto> findByPriority(Priority priority);
+    TaskDto updateStatus(Integer id, TaskDto taskDto);
+    List<TaskDto> updatePriorityForAll(Priority oldPriority, Priority newPriority);
 }

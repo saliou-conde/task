@@ -176,10 +176,9 @@ public class TaskServiceImpl implements TaskService {
         }
     }
 
-
     private void validateDueDate(LocalDate dueDate, Task task) {
         if (dueDate == null) return;
-        if(!checkDueDate(dueDate)) {
+        if(!isDueDateNotInPast(dueDate)) {
             throw new TaskDueDateInvalidException(format("Due date shall be in present or in future:: dueDate is %s", dueDate));
         }
         task.setDueDate(dueDate);
@@ -190,6 +189,5 @@ public class TaskServiceImpl implements TaskService {
         log.info("To is: {}", dueDate);
         return dueDate.isEqual(now) || now.isBefore(dueDate);
     }
-
 
 }

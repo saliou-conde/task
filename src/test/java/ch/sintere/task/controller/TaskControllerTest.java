@@ -2,7 +2,6 @@ package ch.sintere.task.controller;
 
 import ch.sintere.task.dto.PriorityUpdateRequest;
 import ch.sintere.task.dto.TaskDto;
-import ch.sintere.task.entities.Priority;
 import ch.sintere.task.entities.Status;
 import ch.sintere.task.service.TaskService;
 import org.junit.jupiter.api.Assertions;
@@ -10,22 +9,20 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
-import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 
 import java.time.LocalDate;
-import java.time.LocalDateTime;
 import java.util.List;
 
-import static ch.sintere.task.entities.Priority.HIGH;
+import static ch.sintere.task.entities.Priority.*;
 import static ch.sintere.task.entities.Status.OPEN;
+import static java.time.LocalDateTime.now;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.assertAll;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static org.mockito.MockitoAnnotations.openMocks;
-import static org.springframework.http.HttpStatus.NO_CONTENT;
-import static org.springframework.http.HttpStatus.OK;
+import static org.springframework.http.HttpStatus.*;
 
 class TaskControllerTest {
 
@@ -45,7 +42,7 @@ class TaskControllerTest {
                 "My Task",
                 OPEN,
                 HIGH,
-                LocalDateTime.now(),
+                now(),
                 null,
                 LocalDate.now().plusDays(1),
                 "user1"
@@ -62,7 +59,7 @@ class TaskControllerTest {
                 () -> assertThat(response).isNotNull(),
                 () -> {
                     Assertions.assertNotNull(response);
-                    assertThat(response.getStatusCode()).isEqualTo(HttpStatus.CREATED);
+                    assertThat(response.getStatusCode()).isEqualTo(CREATED);
                 },
                 () -> {
                     Assertions.assertNotNull(response);
@@ -157,8 +154,8 @@ class TaskControllerTest {
                 "My Task",
                 Status.DONE,
                 HIGH,
-                LocalDateTime.now(),
-                LocalDateTime.now(),
+                now(),
+                now(),
                 LocalDate.now().plusDays(2),
                 "user1"
         );
@@ -179,9 +176,9 @@ class TaskControllerTest {
 
     @Test
     void updatePriorityForAll_shouldReturnUpdatedTasks() {
-        PriorityUpdateRequest request = new PriorityUpdateRequest(Priority.LOW, Priority.MEDIUM);
+        PriorityUpdateRequest request = new PriorityUpdateRequest(LOW, MEDIUM);
 
-        when(taskService.updatePriorityForAll(Priority.LOW, Priority.MEDIUM))
+        when(taskService.updatePriorityForAll(LOW, MEDIUM))
                 .thenReturn(List.of(taskDto));
 
         ResponseEntity<List<TaskDto>> response = taskController.updatePriorityForAll(request);
@@ -197,7 +194,7 @@ class TaskControllerTest {
                 }
         );
 
-        verify(taskService).updatePriorityForAll(Priority.LOW, Priority.MEDIUM);
+        verify(taskService).updatePriorityForAll(LOW, MEDIUM);
     }
 
     @Test

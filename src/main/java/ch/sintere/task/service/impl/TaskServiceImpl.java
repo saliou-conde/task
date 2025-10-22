@@ -1,6 +1,7 @@
 package ch.sintere.task.service.impl;
 
 import ch.sintere.task.dto.TaskDto;
+import ch.sintere.task.dto.TaskStatus;
 import ch.sintere.task.entities.Priority;
 import ch.sintere.task.entities.Status;
 import ch.sintere.task.entities.Task;
@@ -20,6 +21,7 @@ import java.util.List;
 import java.util.Objects;
 import java.util.Set;
 
+import static ch.sintere.task.entities.Status.DONE;
 import static java.lang.String.format;
 
 @Service

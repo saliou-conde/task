@@ -47,7 +47,7 @@ public class JwtAuthConverter implements Converter<Jwt, AbstractAuthenticationTo
       claimName = principalAttributeName;
     }
     String username = source.getClaim(claimName);
-    LOGGER.info("Jwt claim {} is: {}", claimName, username);
+    LOGGER.info("Jwt claim is: {}, username is: {}", claimName, username);
     return username;
   }
 

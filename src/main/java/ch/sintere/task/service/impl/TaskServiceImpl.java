@@ -170,16 +170,9 @@ public class TaskServiceImpl implements TaskService {
         }
     }
 
-    private void validateStatusTransition(TaskStatus oldStatus, TaskStatus  newStatus) {
-        if (oldStatus.status() == DONE && newStatus.status() != DONE) {
-            throw new IllegalStateException("Cannot change status of completed task.");
-        }
-    }
-
-
     private void validateDueDate(LocalDate dueDate, Task task) {
         if (dueDate == null) return;
-        if(!checkDueDate(dueDate)) {
+        if(!isDueDateNotInPast(dueDate)) {
             throw new TaskDueDateInvalidException(format("Due date shall be in present or in future:: dueDate is %s", dueDate));
         }
         task.setDueDate(dueDate);
@@ -191,5 +184,10 @@ public class TaskServiceImpl implements TaskService {
         return dueDate.isEqual(now) || now.isBefore(dueDate);
     }
 
+    private void validateStatusTransition(TaskStatus oldStatus, TaskStatus  newStatus) {
+        if (oldStatus.status() == DONE && newStatus.status() != DONE) {
+            throw new IllegalStateException("Cannot change status of completed task.");
+        }
+    }
 
 }

@@ -149,7 +149,6 @@ public class TaskServiceImpl implements TaskService {
         }
     }
 
-
     private void validateDueDate(LocalDate dueDate, Task task) {
         if (dueDate == null) return;
         if(!isDueDateNotInPast(dueDate)) {

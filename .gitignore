@@ -1,4 +1,4 @@
-#HELP.md
+#HELP and README files shall be added.
 target/
 .mvn/wrapper/maven-wrapper.jar
 !**/src/main/**/target/

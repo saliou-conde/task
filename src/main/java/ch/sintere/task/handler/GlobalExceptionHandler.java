@@ -53,7 +53,7 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler(Exception.class)
     public ResponseEntity<ProblemDetail> handleGenericException(Exception ex) {
-        log.error("Unexpected error: {}", ex.getMessage());
+        log.error("Unexpected error: ", ex);
         return createResponseEntityWithProblemDetail(
                 ex.getMessage(), INTERNAL_SERVER_ERROR, "Unexpected Error"
         );

@@ -179,7 +179,7 @@ public class TaskServiceImpl implements TaskService {
 
     private void validateDueDate(LocalDate dueDate, Task task) {
         if (dueDate == null) return;
-        if(!isDueDateNotInPast(dueDate)) {
+        if(!checkDueDate(dueDate)) {
             throw new TaskDueDateInvalidException(format("Due date shall be in present or in future:: dueDate is %s", dueDate));
         }
         task.setDueDate(dueDate);

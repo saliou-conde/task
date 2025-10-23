@@ -9,7 +9,6 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
-import org.springframework.http.ResponseEntity;
 
 import java.time.LocalDate;
 import java.util.List;
@@ -212,7 +211,7 @@ class TaskControllerTest {
                 .thenReturn(List.of(taskDto));
 
         //When
-        ResponseEntity<List<TaskDto>> response = taskController.updatePriorityForAll(request);
+        var response = taskController.updatePriorityForAll(request);
 
         //Then
         assertAll("Update Priority Assertions",

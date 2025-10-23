@@ -53,8 +53,10 @@ class TaskControllerTest {
     void addTask_shouldReturnCreatedTask() {
         when(taskService.addTask(taskDto)).thenReturn(taskDto);
 
-        ResponseEntity<TaskDto> response = taskController.addTask(taskDto);
+        //When
+        var response = taskController.addTask(taskDto);
 
+        //Then
         assertAll("Add Task Assertions",
                 () -> assertThat(response).isNotNull(),
                 () -> {
@@ -73,15 +75,21 @@ class TaskControllerTest {
                 }
         );
 
+        //Verify interaction
         verify(taskService).addTask(taskDto);
     }
 
     @Test
     void findTaskById_shouldReturnTask() {
-        when(taskService.findTaskById(1)).thenReturn(taskDto);
+        //Given
+        Integer taskId = 1;
 
-        ResponseEntity<TaskDto> response = taskController.findTaskById(1);
+        when(taskService.findTaskById(taskId)).thenReturn(taskDto);
 
+        //When
+        var response = taskController.findTaskById(taskId);
+
+        //Then
         assertAll("Find Task Assertions",
                 () -> assertThat(response.getStatusCode()).isEqualTo(OK),
                 () -> assertThat(response.getBody())
@@ -89,15 +97,20 @@ class TaskControllerTest {
                         .containsExactly("My Task", OPEN, HIGH)
         );
 
-        verify(taskService).findTaskById(1);
+        //Verify interaction
+        verify(taskService).findTaskById(taskId);
     }
 
     @Test
     void findByStatus_shouldReturnList() {
-        when(taskService.findByStatus(OPEN)).thenReturn(List.of(taskDto));
+        //Given
+        var status = OPEN;
+        when(taskService.findByStatus(status)).thenReturn(List.of(taskDto));
 
-        ResponseEntity<List<TaskDto>> response = taskController.findByStatus(OPEN);
+        //When
+        var response = taskController.findByStatus(status);
 
+        //Then
         assertAll("Find By Status Assertions",
                 () -> assertThat(response.getStatusCode()).isEqualTo(OK),
                 () -> assertThat(response.getBody()).hasSize(1),
@@ -105,19 +118,25 @@ class TaskControllerTest {
                     Assertions.assertNotNull(response.getBody());
                     assertThat(response.getBody().getFirst())
                             .extracting(TaskDto::title, TaskDto::status, TaskDto::priority)
-                            .containsExactly("My Task", OPEN, HIGH);
+                            .containsExactly("My Task", status, HIGH);
                 }
         );
 
-        verify(taskService).findByStatus(OPEN);
+        //Verify interaction
+        verify(taskService).findByStatus(status);
     }
 
     @Test
     void findByPriority_shouldReturnList() {
-        when(taskService.findByPriority(HIGH)).thenReturn(List.of(taskDto));
+        //Given
+        var priority = HIGH;
 
-        ResponseEntity<List<TaskDto>> response = taskController.findByPriority(HIGH);
+        when(taskService.findByPriority(priority)).thenReturn(List.of(taskDto));
 
+        //When
+        var response = taskController.findByPriority(priority);
+
+        //Then
         assertAll("Find By Priority Assertions",
                 () -> assertThat(response.getStatusCode()).isEqualTo(OK),
                 () -> assertThat(response.getBody()).hasSize(1),
@@ -125,19 +144,24 @@ class TaskControllerTest {
                     Assertions.assertNotNull(response.getBody());
                     assertThat(response.getBody().getFirst())
                             .extracting(TaskDto::title, TaskDto::status, TaskDto::priority)
-                            .containsExactly("My Task", OPEN, HIGH);
+                            .containsExactly("My Task", OPEN, priority);
                 }
         );
 
-        verify(taskService).findByPriority(HIGH);
+        //Verify interaction
+        verify(taskService).findByPriority(priority);
     }
 
     @Test
     void updateTask_shouldReturnUpdatedTask() {
-        when(taskService.updateTask(taskDto, 1)).thenReturn(taskDto);
+        //Given
+        var taskId = 1;
+        when(taskService.updateTask(taskDto, taskId)).thenReturn(taskDto);
 
-        ResponseEntity<TaskDto> response = taskController.updateTask(taskDto, 1);
+        //When
+        var response = taskController.updateTask(taskDto, taskId);
 
+        //Then
         assertAll("Update Task Assertions",
                 () -> assertThat(response.getStatusCode()).isEqualTo(OK),
                 () -> assertThat(response.getBody())
@@ -145,12 +169,14 @@ class TaskControllerTest {
                         .containsExactly("My Task", OPEN, HIGH)
         );
 
-        verify(taskService).updateTask(taskDto, 1);
+        //Verify interaction
+        verify(taskService).updateTask(taskDto, taskId);
     }
 
     @Test
     void updateStatus_shouldReturnUpdatedStatus() {
-        TaskDto updatedDto = new TaskDto(
+        //Given
+        var updatedDto = new TaskDto(
                 "My Task",
                 Status.DONE,
                 HIGH,
@@ -162,8 +188,10 @@ class TaskControllerTest {
 
         when(taskService.updateStatus(1, updatedDto)).thenReturn(updatedDto);
 
-        ResponseEntity<TaskDto> response = taskController.updateStatus(1, updatedDto);
+        //When
+        var response = taskController.updateStatus(1, updatedDto);
 
+        //Then
         assertAll("Update Status Assertions",
                 () -> assertThat(response.getStatusCode()).isEqualTo(OK),
                 () -> assertThat(response.getBody())
@@ -171,18 +199,22 @@ class TaskControllerTest {
                         .containsExactly("My Task", Status.DONE)
         );
 
+        //Verify interaction
         verify(taskService).updateStatus(1, updatedDto);
     }
 
     @Test
     void updatePriorityForAll_shouldReturnUpdatedTasks() {
+        //Given
         PriorityUpdateRequest request = new PriorityUpdateRequest(LOW, MEDIUM);
 
         when(taskService.updatePriorityForAll(LOW, MEDIUM))
                 .thenReturn(List.of(taskDto));
 
+        //When
         ResponseEntity<List<TaskDto>> response = taskController.updatePriorityForAll(request);
 
+        //Then
         assertAll("Update Priority Assertions",
                 () -> assertThat(response.getStatusCode()).isEqualTo(OK),
                 () -> assertThat(response.getBody()).hasSize(1),
@@ -194,19 +226,26 @@ class TaskControllerTest {
                 }
         );
 
+        //Verify interaction
         verify(taskService).updatePriorityForAll(LOW, MEDIUM);
     }
 
     @Test
     void deleteTaskById_shouldReturnNoContent() {
-        when(taskService.deleteTask(1)).thenReturn(true);
+        //Given
+        var id = 1;
 
-        ResponseEntity<Void> response = taskController.deleteTaskById(1);
+        when(taskService.deleteTask(id)).thenReturn(true);
 
+        //When
+        var response = taskController.deleteTaskById(id);
+
+        //Then
         assertAll("Delete Task Assertions",
                 () -> assertThat(response.getStatusCode()).isEqualTo(NO_CONTENT)
         );
 
-        verify(taskService).deleteTask(1);
+        //Verify interaction
+        verify(taskService).deleteTask(id);
     }
 }

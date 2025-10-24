@@ -4,7 +4,6 @@ import ch.sintere.task.dto.PriorityUpdateRequest;
 import ch.sintere.task.dto.TaskDto;
 import ch.sintere.task.entities.Status;
 import ch.sintere.task.service.TaskService;
-import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.InjectMocks;
@@ -58,17 +57,8 @@ class TaskControllerTest {
 
         //Then
         assertAll("Add Task Assertions",
-                () -> assertThat(response).isNotNull(),
                 () -> {
-                    Assertions.assertNotNull(response);
                     assertThat(response.getStatusCode()).isEqualTo(CREATED);
-                },
-                () -> {
-                    Assertions.assertNotNull(response);
-                    assertThat(response.getBody()).isNotNull();
-                },
-                () -> {
-                    Assertions.assertNotNull(response);
                     assertThat(response.getBody())
                             .extracting(TaskDto::title, TaskDto::status, TaskDto::priority)
                             .containsExactly("My Task", OPEN, HIGH);
@@ -91,10 +81,13 @@ class TaskControllerTest {
 
         //Then
         assertAll("Find Task Assertions",
-                () -> assertThat(response.getStatusCode()).isEqualTo(OK),
-                () -> assertThat(response.getBody())
-                        .extracting(TaskDto::title, TaskDto::status, TaskDto::priority)
-                        .containsExactly("My Task", OPEN, HIGH)
+                () -> {
+                    assertThat(response.getStatusCode()).isEqualTo(OK);
+                    assertThat(response.getBody())
+                            .extracting(TaskDto::title, TaskDto::status, TaskDto::priority)
+                            .containsExactly("My Task", OPEN, HIGH);
+
+                }
         );
 
         //Verify interaction
@@ -112,10 +105,10 @@ class TaskControllerTest {
 
         //Then
         assertAll("Find By Status Assertions",
-                () -> assertThat(response.getStatusCode()).isEqualTo(OK),
-                () -> assertThat(response.getBody()).hasSize(1),
                 () -> {
-                    Assertions.assertNotNull(response.getBody());
+                    assertThat(response.getBody()).isNotNull();
+                    assertThat(response.getBody()).hasSize(1);
+                    assertThat(response.getStatusCode()).isEqualTo(OK);
                     assertThat(response.getBody().getFirst())
                             .extracting(TaskDto::title, TaskDto::status, TaskDto::priority)
                             .containsExactly("My Task", status, HIGH);
@@ -138,10 +131,9 @@ class TaskControllerTest {
 
         //Then
         assertAll("Find By Priority Assertions",
-                () -> assertThat(response.getStatusCode()).isEqualTo(OK),
-                () -> assertThat(response.getBody()).hasSize(1),
                 () -> {
-                    Assertions.assertNotNull(response.getBody());
+                    assertThat(response.getStatusCode()).isEqualTo(OK);
+                    assertThat(response.getBody()).hasSize(1);
                     assertThat(response.getBody().getFirst())
                             .extracting(TaskDto::title, TaskDto::status, TaskDto::priority)
                             .containsExactly("My Task", OPEN, priority);
@@ -163,10 +155,12 @@ class TaskControllerTest {
 
         //Then
         assertAll("Update Task Assertions",
-                () -> assertThat(response.getStatusCode()).isEqualTo(OK),
-                () -> assertThat(response.getBody())
-                        .extracting(TaskDto::title, TaskDto::status, TaskDto::priority)
-                        .containsExactly("My Task", OPEN, HIGH)
+                () -> {
+                    assertThat(response.getStatusCode()).isEqualTo(OK);
+                    assertThat(response.getBody())
+                            .extracting(TaskDto::title, TaskDto::status, TaskDto::priority)
+                            .containsExactly("My Task", OPEN, HIGH);
+                }
         );
 
         //Verify interaction
@@ -193,10 +187,12 @@ class TaskControllerTest {
 
         //Then
         assertAll("Update Status Assertions",
-                () -> assertThat(response.getStatusCode()).isEqualTo(OK),
-                () -> assertThat(response.getBody())
-                        .extracting(TaskDto::title, TaskDto::status)
-                        .containsExactly("My Task", Status.DONE)
+                () -> {
+                    assertThat(response.getStatusCode()).isEqualTo(OK);
+                    assertThat(response.getBody())
+                            .extracting(TaskDto::title, TaskDto::status)
+                            .containsExactly("My Task", Status.DONE);
+                }
         );
 
         //Verify interaction
@@ -216,10 +212,9 @@ class TaskControllerTest {
 
         //Then
         assertAll("Update Priority Assertions",
-                () -> assertThat(response.getStatusCode()).isEqualTo(OK),
-                () -> assertThat(response.getBody()).hasSize(1),
                 () -> {
-                    Assertions.assertNotNull(response.getBody());
+                    assertThat(response.getStatusCode()).isEqualTo(OK);
+                    assertThat(response.getBody()).hasSize(1);
                     assertThat(response.getBody().getFirst())
                             .extracting(TaskDto::title, TaskDto::priority)
                             .containsExactly("My Task", HIGH);
@@ -242,8 +237,13 @@ class TaskControllerTest {
 
         //Then
         assertAll("Delete Task Assertions",
-                () -> assertThat(response.getStatusCode()).isEqualTo(NO_CONTENT)
+                () -> {
+                    assertThat(response).isNotNull();
+                    assertThat(response.getStatusCode()).isEqualTo(NO_CONTENT);
+                }
         );
+
+
 
         //Verify interaction
         verify(taskService).deleteTask(id);

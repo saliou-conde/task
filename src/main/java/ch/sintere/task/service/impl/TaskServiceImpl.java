@@ -16,9 +16,11 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.lang.reflect.Field;
 import java.time.LocalDate;
 import java.util.List;
 import java.util.Objects;
+import java.util.Optional;
 import java.util.Set;
 
 import static ch.sintere.task.entities.Status.DONE;
@@ -163,7 +165,7 @@ public class TaskServiceImpl implements TaskService {
         return dueDate.isEqual(now) || now.isBefore(dueDate);
     }
 
-    private void validateOnlyStatusChanged(Task existing, TaskDto dto) {
+    public void validateOnlyStatusChanged(Task existing, TaskDto dto) {
         var allowedToChange = Set.of("status");
 
         var taskFields = Task.class.getDeclaredFields();
@@ -172,8 +174,12 @@ public class TaskServiceImpl implements TaskService {
             if (allowedToChange.contains(field.getName())) continue;
 
             try {
+                var dtoFieldOpt = getFieldIfExists(dto.getClass(), field.getName());
+                if (dtoFieldOpt.isEmpty()) continue;
+
                 var entityValue = field.get(existing);
-                var dtoValue = field.get(dto);
+                var dtoValue = dtoFieldOpt.get().get(dto);
+
                 if (!Objects.equals(entityValue, dtoValue)) {
                     throw new IllegalArgumentException(
                             "Only 'status' field is allowed to change (violated: " + field.getName() + ")");
@@ -184,10 +190,20 @@ public class TaskServiceImpl implements TaskService {
         }
     }
 
-    private void validateStatusTransition(TaskStatus oldStatus, TaskStatus  newStatus) {
+    private Optional<Field> getFieldIfExists(Class<?> clazz, String fieldName) {
+        try {
+            Field f = clazz.getDeclaredField(fieldName);
+            f.setAccessible(true);
+            return Optional.of(f);
+        } catch (NoSuchFieldException e) {
+            return Optional.empty();
+        }
+    }
+
+
+    public void validateStatusTransition(TaskStatus oldStatus, TaskStatus  newStatus) {
         if (oldStatus.status() == DONE && newStatus.status() != DONE) {
             throw new IllegalStateException("Cannot change status of completed task.");
         }
     }
-
 }

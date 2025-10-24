@@ -353,7 +353,67 @@ class TaskServiceImplTest {
                     }
             );
         }
+
+        @Test
+        void validateOnlyStatusChanged_shouldThrowIllegalArgumentException_whenEntityAndDTOFieldsNotEqual() {
+            //Given
+            var title = "My Title";
+            var status = IN_PROGRESS;
+            var createdAt = LocalDateTime.now();
+            var updatedAt = LocalDateTime.now();
+            var dueDate = LocalDate.now();
+            var createdBy = "My User";
+            Task existing = Task.builder()
+                    .title(title)
+                    .dueDate(dueDate)
+                    .status(status)
+                    .priority(MEDIUM)
+                    .createdAt(createdAt)
+                    .createdBy(createdBy)
+                    .build();
+            TaskDto taskDto = new TaskDto(title, status, LOW, createdAt, updatedAt, dueDate, createdBy);
+
+            //When & Then
+            assertThatThrownBy(() -> taskService.validateOnlyStatusChanged(existing, taskDto))
+                    .isInstanceOf(IllegalArgumentException.class)
+                    .hasMessageContaining("Only 'status' field is allowed to change (violated: priority)" );
+        }
+
+        @Nested
+        class ValidateOnlyStatusChanged {
+            @Test
+            void validateOnlyStatusChanged_shouldValidateStatusChanged_whenEntityAndDTOFieldsEqual() {
+                //Given
+                var title = "My Title";
+                var status = OPEN;
+                var priority =  MEDIUM;
+                var createdAt = LocalDateTime.now();
+                var updatedAt = LocalDateTime.now();
+                var dueDate = LocalDate.now();
+                var createdBy = "My User";
+                Task existing = Task.builder()
+                        .title(title)
+                        .dueDate(dueDate)
+                        .status(status)
+                        .priority(priority)
+                        .createdAt(createdAt)
+                        .createdBy(createdBy)
+                        .build();
+                TaskDto taskDto = new TaskDto(title, status, priority, createdAt, updatedAt, dueDate, createdBy);
+
+                //When
+                taskService.validateOnlyStatusChanged(existing, taskDto);
+
+                //Then
+                assertAll(
+                        () -> {
+
+                        }
+                );
+            }
+        }
     }
+
 
     @Nested
     class FindTaskByPriority {

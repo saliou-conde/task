@@ -11,6 +11,7 @@ import ch.sintere.task.exception.TaskNotFoundException;
 import ch.sintere.task.mapper.TaskMapper;
 import ch.sintere.task.repository.TaskRepository;
 import ch.sintere.task.service.TaskService;
+import ch.sintere.task.service.TaskStatusValidator;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -29,7 +30,7 @@ import static java.lang.String.format;
 @Service
 @RequiredArgsConstructor
 @Slf4j
-public class TaskServiceImpl implements TaskService {
+public class TaskServiceImpl implements TaskService, TaskStatusValidator {
 
     private final TaskRepository taskRepository;
     private final TaskMapper taskMapper;
@@ -117,6 +118,37 @@ public class TaskServiceImpl implements TaskService {
                 .map(taskMapper::toDto).toList();
     }
 
+    public void validateOnlyStatusChanged(Task existing, TaskDto dto) {
+        var allowedToChange = Set.of("status");
+
+        var taskFields = Task.class.getDeclaredFields();
+        for (var field : taskFields) {
+            field.setAccessible(true);
+            if (allowedToChange.contains(field.getName())) continue;
+
+            try {
+                var dtoFieldOpt = getFieldIfExists(dto.getClass(), field.getName());
+                if (dtoFieldOpt.isEmpty()) continue;
+
+                var entityValue = field.get(existing);
+                var dtoValue = dtoFieldOpt.get().get(dto);
+
+                if (!Objects.equals(entityValue, dtoValue)) {
+                    throw new IllegalArgumentException(
+                            "Only 'status' field is allowed to change (violated: " + field.getName() + ")");
+                }
+            } catch (IllegalAccessException e) {
+                throw new RuntimeException(e);
+            }
+        }
+    }
+
+    public void validateStatusTransition(TaskStatus oldStatus, TaskStatus newStatus) {
+        if (oldStatus.status() == DONE && newStatus.status() != DONE) {
+            throw new IllegalStateException("Cannot change status of a completed task.");
+        }
+    }
+
     private Task findById(Integer id) {
         return taskRepository.findById(id)
                 .orElseThrow(() -> {
@@ -165,31 +197,6 @@ public class TaskServiceImpl implements TaskService {
         return dueDate.isEqual(now) || now.isBefore(dueDate);
     }
 
-    public void validateOnlyStatusChanged(Task existing, TaskDto dto) {
-        var allowedToChange = Set.of("status");
-
-        var taskFields = Task.class.getDeclaredFields();
-        for (var field : taskFields) {
-            field.setAccessible(true);
-            if (allowedToChange.contains(field.getName())) continue;
-
-            try {
-                var dtoFieldOpt = getFieldIfExists(dto.getClass(), field.getName());
-                if (dtoFieldOpt.isEmpty()) continue;
-
-                var entityValue = field.get(existing);
-                var dtoValue = dtoFieldOpt.get().get(dto);
-
-                if (!Objects.equals(entityValue, dtoValue)) {
-                    throw new IllegalArgumentException(
-                            "Only 'status' field is allowed to change (violated: " + field.getName() + ")");
-                }
-            } catch (IllegalAccessException e) {
-                throw new RuntimeException(e);
-            }
-        }
-    }
-
     private Optional<Field> getFieldIfExists(Class<?> clazz, String fieldName) {
         try {
             Field f = clazz.getDeclaredField(fieldName);
@@ -197,13 +204,6 @@ public class TaskServiceImpl implements TaskService {
             return Optional.of(f);
         } catch (NoSuchFieldException e) {
             return Optional.empty();
-        }
-    }
-
-
-    public void validateStatusTransition(TaskStatus oldStatus, TaskStatus  newStatus) {
-        if (oldStatus.status() == DONE && newStatus.status() != DONE) {
-            throw new IllegalStateException("Cannot change status of completed task.");
         }
     }
 }

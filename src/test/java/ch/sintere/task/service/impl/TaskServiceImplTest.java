@@ -1,6 +1,7 @@
 package ch.sintere.task.service.impl;
 
 import ch.sintere.task.dto.TaskDto;
+import ch.sintere.task.dto.TaskStatus;
 import ch.sintere.task.entities.Priority;
 import ch.sintere.task.entities.Status;
 import ch.sintere.task.entities.Task;
@@ -11,6 +12,8 @@ import ch.sintere.task.repository.TaskRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
+import org.mockito.InjectMocks;
+import org.mockito.Mock;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -20,22 +23,23 @@ import java.util.Optional;
 import static ch.sintere.task.entities.Priority.*;
 import static ch.sintere.task.entities.Status.*;
 import static java.lang.String.format;
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.assertj.core.api.Assertions.*;
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.*;
+import static org.mockito.MockitoAnnotations.openMocks;
 
 class TaskServiceImplTest {
 
+    @Mock
     private TaskRepository taskRepository;
-    private TaskServiceImpl taskService;
+    @Mock
     private TaskMapperImpl taskMapper;
+    @InjectMocks
+    private TaskServiceImpl taskService;
 
     @BeforeEach
     void setUp() {
-        taskRepository = mock(TaskRepository.class);
-        taskMapper = mock(TaskMapperImpl.class);
-        taskService = new TaskServiceImpl(taskRepository, taskMapper);
+        openMocks(this);
     }
 
     @Nested
@@ -354,33 +358,35 @@ class TaskServiceImplTest {
             );
         }
 
-        @Test
-        void validateOnlyStatusChanged_shouldThrowIllegalArgumentException_whenEntityAndDTOFieldsNotEqual() {
-            //Given
-            var title = "My Title";
-            var status = IN_PROGRESS;
-            var createdAt = LocalDateTime.now();
-            var updatedAt = LocalDateTime.now();
-            var dueDate = LocalDate.now();
-            var createdBy = "My User";
-            Task existing = Task.builder()
-                    .title(title)
-                    .dueDate(dueDate)
-                    .status(status)
-                    .priority(MEDIUM)
-                    .createdAt(createdAt)
-                    .createdBy(createdBy)
-                    .build();
-            TaskDto taskDto = new TaskDto(title, status, LOW, createdAt, updatedAt, dueDate, createdBy);
-
-            //When & Then
-            assertThatThrownBy(() -> taskService.validateOnlyStatusChanged(existing, taskDto))
-                    .isInstanceOf(IllegalArgumentException.class)
-                    .hasMessageContaining("Only 'status' field is allowed to change (violated: priority)" );
-        }
-
         @Nested
         class ValidateOnlyStatusChanged {
+
+            @Test
+            void validateOnlyStatusChanged_shouldThrowIllegalArgumentException_whenEntityAndDTOFieldsNotEqual() {
+                //Given
+                var title = "My Title";
+                var status = IN_PROGRESS;
+                var createdAt = LocalDateTime.now();
+                var updatedAt = LocalDateTime.now();
+                var dueDate = LocalDate.now();
+                var createdBy = "My User";
+                Task existing = Task.builder()
+                        .title(title)
+                        .dueDate(dueDate)
+                        .status(status)
+                        .priority(MEDIUM)
+                        .createdAt(createdAt)
+                        .createdBy(createdBy)
+                        .build();
+                TaskDto taskDto = new TaskDto(title, status, LOW, createdAt, updatedAt, dueDate, createdBy);
+
+                //When & Then
+                assertThatThrownBy(() -> taskService.validateOnlyStatusChanged(existing, taskDto))
+                        .isInstanceOf(IllegalArgumentException.class)
+                        .hasMessageContaining("Only 'status' field is allowed to change (violated: priority)" );
+            }
+
+
             @Test
             void validateOnlyStatusChanged_shouldValidateStatusChanged_whenEntityAndDTOFieldsEqual() {
                 //Given
@@ -412,6 +418,89 @@ class TaskServiceImplTest {
                 );
             }
         }
+
+        @Nested
+        class TaskServiceImplStatusValidationTest {
+
+            @Test
+            void shouldAllowTransitionFromOpenToInProgress() {
+                //Given
+                var oldStatus = new TaskStatus(OPEN);
+                var newStatus = new TaskStatus(IN_PROGRESS);
+
+                assertAll(
+                        () -> assertThatCode(() ->
+                                taskService.validateStatusTransition(
+                                        oldStatus,
+                                        newStatus
+                                )
+                        ).doesNotThrowAnyException()
+                );
+            }
+
+            @Test
+            void shouldAllowTransitionFromInProgressToDone() {
+                //Given
+                var oldStatus = new TaskStatus(IN_PROGRESS);
+                var newStatus = new TaskStatus(DONE);
+
+                //When & Then
+                assertAll(
+                        () -> assertThatCode(() ->
+                                taskService.validateStatusTransition(oldStatus, newStatus)
+                        ).doesNotThrowAnyException()
+                );
+            }
+
+            @Test
+            void shouldNotAllowTransitionFromDoneToOpen() {
+                //Given
+                var oldStatus = new TaskStatus(Status.DONE);
+                var newStatus =new TaskStatus(Status.OPEN);
+
+                //When & Then
+                assertAll(
+                        () -> assertThatThrownBy(() ->
+                                taskService.validateStatusTransition(
+                                        oldStatus, newStatus
+                                )
+                        )
+                                .isInstanceOf(IllegalStateException.class)
+                                .hasMessage("Cannot change status of a completed task.")
+                );
+            }
+
+            @Test
+            void shouldNotAllowTransitionFromDoneToInProgress() {
+                //Given
+                var oldStatus = new TaskStatus(Status.DONE);
+                var newStatus = new TaskStatus(Status.IN_PROGRESS);
+
+                //When & Then
+                assertAll(
+                        () -> assertThatThrownBy(() ->
+                                taskService.validateStatusTransition(oldStatus, newStatus)
+                        )
+                                .isInstanceOf(IllegalStateException.class)
+                                .hasMessage("Cannot change status of a completed task.")
+                );
+            }
+
+            @Test
+            void shouldAllowTransitionFromDoneToDone() {
+                //
+                var oldStatus = new TaskStatus(Status.DONE);
+                var newStatus = new TaskStatus(Status.DONE);
+
+                //When & Then
+                assertAll(
+                        () -> assertThatCode(() ->
+                                taskService.validateStatusTransition(oldStatus, newStatus)
+                        ).doesNotThrowAnyException()
+                );
+            }
+        }
+
     }
 
 

@@ -2,9 +2,9 @@ package ch.sintere.task.entities;
 
 public enum Status {
     ACTIVE,
+    DONE,
     INACTIVE,
-    PENDING,
     IN_PROGRESS,
     OPEN,
-    DONE
+    PENDING
 }
